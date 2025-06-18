@@ -1,141 +1,149 @@
-# MCQ Test Analytics Dashboard
+# MCQ Test Analytics Dashboard Proposal
 
 ## 1. Dashboard Objective
 
-The MCQ Test Analytics Dashboard is designed to provide actionable insights into student test-taking behavior, test funnel performance, and question-level analytics. The dashboard is built to help educators, administrators, and test designers monitor how tests are performed, identify drop-offs, and understand question difficulty and engagement.
+The MCQ Test Analytics Dashboard provides a high-level and detailed view of how students interact with multiple-choice tests. It helps identify engagement patterns, student accuracy, question difficulty, and session activity. The goal is to enable educators and analysts to make informed decisions based on student behavior and test outcomes.
 
 ---
 
-## 2. Target Users
+## 2. Analytical Questions Answered
 
-- Teachers/Test Designers
-- Academic Coordinators
-- EdTech Analysts
-- Product Managers
-
----
-
-## 3. Analytical Questions Answered
-
-This dashboard addresses the following core questions:
-
-- How many tests were started and completed?
-- What is the test completion rate?
-- Which tests have high drop-off rates?
-- What is the time taken to complete tests?
-- What questions are most frequently revisited?
-- Which questions are most time-consuming?
-- What is the overall accuracy of students per test/question?
-- What sessions or tests are currently active or expired?
+- How many tests are started and completed?
+- What is the average time to complete a test?
+- Which students are performing well or struggling?
+- Which questions are causing confusion or delay?
+- Which sessions are active, inactive, or expired?
+- Are students improving their scores over time?
 
 ---
 
-## 4. Key KPIs
+## 3. Key KPIs (All Tabs Combined)
 
-### Global KPIs (Top of Dashboard):
-- **Total Tests Started**
-- **Total Tests Completed**
-- **Completion Rate (%)**
-- **Avg Time to Submit a Test**
-- **Total Submissions**
-- **Number of Incomplete Submissions**
-
-### Question-Level KPIs:
-- **Most Revisited Questions**
-- **Most Incorrectly Answered Questions**
-- **Most Time-Consuming Questions**
-- **Average Accuracy per Question**
-
----
-
-## 5. Data Sources
-
-All metrics are derived from the following ETL-processed tables:
-
-- `question_interaction_fact`
-- `test_summary_fact`
-- `test_funnel_fact`
-
-These CSVs are assumed to be loaded into Sigma for interactive visualization.
+- Total Tests Started  
+- Total Tests Completed  
+- Completion Rate (%)  
+- Avg Time to Submit a Test  
+- Number of Incomplete Submissions  
+- Avg Score per Test  
+- Most Frequently Attempted Test  
+- Peak Submission Hour  
+- Most Revisited Question  
+- Most Incorrect Question  
+- Most Time-Consuming Question  
+- Average Question Accuracy  
+- Number of Active Sessions  
+- Number of Expired Sessions  
 
 ---
 
-## 6. Dashboard Structure and Visualizations
+## 4. Dashboard Structure and Visualizations
 
-### 🧭 Tab 1: Test Funnel Overview
+### Tab 1: Global & Student KPIs
 
-**Purpose**: Understand how users are progressing through the test journey.
+**Purpose**: View key metrics and progress over time, either overall or for a selected student.
 
-- **Bar Chart**: Tests vs. Number of Submissions (completed & incomplete)
-- **Funnel Chart**: Total → Attempted → Completed submissions
-- **Line Chart**: Completion Rate Over Time
-- **Box Plot**: Distribution of Submission Times (per test)
+**KPIs Displayed**:
+- Total Tests Started
+- Total Tests Completed
+- Completion Rate
+- Avg Score
+- Avg Time to Complete Test
+- Incomplete Test Count
 
----
+**Visualizations**:
+- Line Chart: Test Accuracy over Time (per student or overall)
+- Bar Chart: Number of Tests Attempted (per test)
 
-### 📊 Tab 2: Test Performance Summary
-
-**Purpose**: High-level summary of how students performed in each test.
-
-- **Table**: `test_summary_fact` with conditional formatting:
-  - Accuracy % (green → red scale)
-  - Time Spent (hover to display in minutes)
-- **Heatmap**: Student vs. Test (Accuracy %)
-- **Bar Chart**: Average Time Spent vs. Total Correct Answers per Test
-
----
-
-### 🧠 Tab 3: Question Behavior Analytics
-
-**Purpose**: Understand which questions are problematic or time-consuming.
-
-- **Bar Chart**: Top 10 Questions by Revisit Count
-- **Bar Chart**: Top 10 Most Time-Consuming Questions
-- **Scatter Plot**: Accuracy vs. Time Spent (each point = a question)
-- **Table**: 
-  - Question ID
-  - Attempt Count
-  - Correct Rate
-  - Final Answer Accuracy
-  - Time Spent
+**Filters**:
+- Date Range
+- Student ID (default: All Students)
+- Test Name
 
 ---
 
-### 🧪 Tab 4: Session and Test Monitoring
+### Tab 2: Test Overview
 
-**Purpose**: Track session expirations and active test windows.
+**Purpose**: Provide a test-level view of engagement and performance.
 
-- **Table**: Sessions nearing expiry (from `sessions.csv`)
-- **Bar Chart**: Tests with most expired sessions
-- **Timeline**: Test start vs. session expiry
+**KPIs Displayed**:
+- Tests with Highest/Lowest Completion Rate
+- Avg Time per Test
+- Number of Test Starters
+- Number of Test Completions
+- Avg Score per Test
 
----
+**Visualizations**:
+- Bar Chart: Tests vs. Completion Rate
+- Bar Chart: Tests vs. Avg Time
+- Simple Table: Test Name | Total Attempts | Avg Accuracy
 
-## 7. Filters and Interactivity
-
-Add the following global filters:
-
-- Date Range Picker (on `submit_time` or `last_answer_time`)
-- Test Selector Dropdown
-- Student Selector Dropdown
-- Question ID Multi-select
-- Completion Status Toggle (Completed / Incomplete)
-
-All visualizations should be drillable and interactive where possible.
-
----
-
-## 8. Notes
-
-- Update the dashboard daily/hourly using the ETL pipeline outputs.
-- Use color gradients and conditional formatting to quickly highlight insights.
-- Add descriptions to each tab to make the dashboard self-explanatory.
+**Filters**:
+- Date Range
+- Test Name
+- Completion Status (Completed / Incomplete)
 
 ---
 
-## 9. Next Steps
+### Tab 3: Question Insights
 
-- Add trend charts for longitudinal student improvement.
-- Add export options (PDF, CSV snapshots).
-- Include benchmarking between different batches/classes if metadata allows.
+**Purpose**: Highlight performance and behavior around individual questions.
 
+**KPIs Displayed**:
+- Most Revisited Question
+- Most Incorrect Question
+- Most Time-Consuming Question
+- Avg Accuracy Across All Questions
+
+**Visualizations**:
+- Bar Chart: Top Questions by Revisit Count
+- Bar Chart: Top Questions by Incorrect Rate
+- Table: Question ID | Accuracy | Revisit Count | Avg Time
+
+**Filters**:
+- Test Name
+- Question ID
+- Difficulty Level (if available)
+
+---
+
+### Tab 4: Session Monitoring
+
+**Purpose**: Monitor active/inactive test sessions.
+
+**KPIs Displayed**:
+- Number of Active Sessions
+- Number of Expired Sessions
+- Number of Abandoned Sessions
+- Avg Session Duration
+
+**Visualizations**:
+- Bar Chart: Tests vs. Expired Session Count
+- Table: Session ID | Test Name | Start Time | Expiry Time | Status
+
+**Filters**:
+- Date Range
+- Test Name
+- Session Status (Active / Expired)
+
+---
+
+## 5. Filters and Interactivity (Global)
+
+- Date Range Picker  
+- Student ID Dropdown  
+- Test Name Dropdown  
+- Completion Status Toggle  
+- Question ID Selector  
+- Session Status Toggle  
+- Topic/Tag (if metadata available)  
+
+All visualizations are interactive and filterable
+
+---
+
+## 6. Notes
+
+- Dashboard will refresh daily or thrice a day  
+
+
+---
