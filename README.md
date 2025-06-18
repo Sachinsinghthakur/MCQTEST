@@ -87,21 +87,17 @@ These are the analytics-ready tables created via the ETL process.
 
 ## 4. Project Structure
 
-MCQTestETL/
-│
-├── .env # Environment variables (DB creds, Slack alert URL, etc.)
-├── create_tables.py # SQL schema for base and derived tables
-├── run_etl.py # Main ETL driver script
-│
-├── utils/
-│ ├── init.py
-│ ├── alerting.py # send_alert function via Slack/email
-│ ├── db.py # get_engine based on env (dev/prod/test)
-│
-├── etl_utils/
-│ ├── init.py
-│ ├── time_utils.py # get_time_range logic with override support
-│ ├── metadata.py # Functions for metadata tracking
+- **Helper Scripts**:
+
+- **utils.py** – Contains reusable utility functions.
+
+- **etl_utils.py** – Contains shared ETL functions.
+
+**Pipeline Directories**:
+
+python_batch_pipelines/ – Includes ETL scripts written in Python using libraries like Pandas and SQLAlchemy. These are best suited for normal or lightweight data loads.
+
+spark_scalable_pipeline/ – Contains ETL scripts built with PySpark for large-scale data processing. These pipelines include support for Spark features such as Adaptive Query Execution and dynamic partitioning.
 
 
 ---
