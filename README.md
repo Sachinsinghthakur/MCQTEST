@@ -2,122 +2,189 @@
 
 ## 1. Introduction
 
-This project is designed to support analytics and reporting on a multiple-choice (MCQ) based test platform. The system captures test attempts, submissions, and user interactions with each question. The primary goal is to transform raw activity logs into clean, analytical datasets that can be used for performance monitoring, test funnel analysis, and learning behavior evaluation.
+This project supports analytics and performance monitoring on an MCQ-based test platform. The system is used by students to take tests created and assigned by teachers. The raw logs generated during test attempts are stored in normalized base tables. Our ETL pipeline transforms this data into analytics-ready datasets to support dashboards and decision-making.
 
-The pipeline is built using Python and SQLAlchemy, connecting to a PostgreSQL database. It is designed to run hourly and can recover from failures and backfill historical data based on command-line overrides.
-
----
-
-## 2. Base Tables
-
-These are the core operational tables where raw test data is recorded.
-
-### 2.1 `answers`
-- **Description**: Stores every answer submitted by a student to a question.
-- **Columns**:
-  - `answer_id`: Unique ID of the answer attempt.
-  - `student_id`: Identifier for the student.
-  - `question_id`: The question being answered.
-  - `test_id`: The test to which the question belongs.
-  - `session_id`: The session during which the answer was submitted.
-  - `submitted_option`: Option chosen by the student.
-  - `timestamp`: Time of the answer submission.
-
-### 2.2 `questions`
-- **Description**: Master table containing correct options for each question.
-- **Columns**:
-  - `question_id`: Unique ID of the question.
-  - `correct_option`: The correct answer for the question.
-
-### 2.3 `sessions`
-- **Description**: Tracks each test session including expiry times.
-- **Columns**:
-  - `session_id`: Unique session identifier.
-  - `expiry_time`: The time after which a session is no longer valid.
-
-### 2.4 `submissions`
-- **Description**: Final submission record for each test attempt by a student.
-- **Columns**:
-  - `student_id`: Student attempting the test.
-  - `test_id`: The test being submitted.
-  - `submit_time`: Time of submission.
-  - `completion_status`: Whether the test was completed.
+The pipeline is written in Python using SQLAlchemy and Pandas for lightweight loads, with PySpark support for large-scale execution. The system is designed to run hourly, recover from failed runs, and allow backfills using CLI arguments. Metadata about pipeline runs is tracked for reliability and transparency.
 
 ---
 
-## 3. Derived Tables
+## 2. Base Tables (Operational Data)
 
-These are the analytics-ready tables created via the ETL process.
+These are normalized source tables representing the raw data captured in the platform.
+
+### 2.1 `students`
+
+* **Description**: Stores student information.
+* **Columns**:
+
+  * `student_id` (PK): Unique identifier for each student.
+  * `student_name`: Full name.
+  * `email`: Contact email.
+  * `created_at`: Timestamp of account creation.
+
+### 2.2 `teachers`
+
+* **Description**: Stores teacher/creator details.
+* **Columns**:
+
+  * `teacher_id` (PK): Unique identifier for each teacher.
+  * `teacher_name`: Full name.
+  * `email`: Contact email.
+  * `department`: Department of the teacher.
+
+### 2.3 `tests`
+
+* **Description**: Metadata of each test created.
+* **Columns**:
+
+  * `test_id` (PK): Unique test identifier.
+  * `teacher_id` (FK): References `teachers`.
+  * `test_name`: Name/title of the test.
+  * `created_at`: Creation time.
+  * `total_questions`: Number of questions.
+
+### 2.4 `questions`
+
+* **Description**: List of questions tied to a test.
+* **Columns**:
+
+  * `question_id` (PK): Unique question identifier.
+  * `test_id` (FK): Links to `tests`.
+  * `correct_option`: The correct option key (A/B/C/D/etc).
+  * `question_text`: Text of the question.
+
+### 2.5 `sessions`
+
+* **Description**: Represents a test-taking session.
+* **Columns**:
+
+  * `session_id` (PK): Unique session identifier.
+  * `student_id` (FK): Links to `students`.
+  * `test_id` (FK): Links to `tests`.
+  * `expiry_time`: Validity end of session.
+
+### 2.6 `answers`
+
+* **Description**: Records each answer attempt by a student.
+* **Columns**:
+
+  * `answer_id` (PK): Unique ID.
+  * `student_id` (FK): Links to `students`.
+  * `question_id` (FK): Links to `questions`.
+  * `test_id` (FK): Redundant for fast access.
+  * `session_id` (FK): Links to `sessions`.
+  * `submitted_option`: Option selected.
+  * `timestamp`: Time of the answer.
+
+### 2.7 `submissions`
+
+* **Description**: Final test submissions.
+* **Columns**:
+
+  * `student_id` (FK): Links to `students`.
+  * `test_id` (FK): Links to `tests`.
+  * `submit_time`: When the test was submitted.
+  * `completion_status`: 'completed' or 'incomplete'.
+
+---
+
+## 3. Derived Tables (Analytics Layer)
+
+Transformed, aggregated tables used to support the dashboard and KPIs.
 
 ### 3.1 `question_interaction_fact`
-- **Granularity**: One record per student-question-test combination.
-- **Purpose**: Analyzes how a student interacted with a question (e.g., accuracy, attempts, time spent).
-- **Columns**:
-  - `student_id`, `test_id`, `question_id`
-  - `first_answer_time`, `last_answer_time`
-  - `answer_count`: How many times the question was answered.
-  - `final_answer_option`: Last option chosen.
-  - `is_correct`: Whether the final answer was correct.
-  - `revisited`: Whether the student attempted the question more than once.
-  - `time_spent`: Time spent between first and last attempts.
+
+* **Grain**: One record per student-question-test.
+* **Columns**:
+
+  * `student_id`, `test_id`, `question_id`
+  * `first_answer_time`, `last_answer_time` (timestamp)
+  * `answer_count` (int)
+  * `final_answer_option` (str)
+  * `is_correct` (bool)
+  * `revisited` (bool): If student attempted more than once.
+  * `time_spent` (float): Seconds between first and last answer.
 
 ### 3.2 `test_summary_fact`
-- **Granularity**: One record per student per test.
-- **Purpose**: Summarizes performance of a student on a test.
-- **Columns**:
-  - `student_id`, `test_id`
-  - `total_questions`
-  - `questions_attempted`
-  - `correct_answers`
-  - `accuracy_percent`
-  - `time_spent`
+
+* **Grain**: One record per student per test.
+* **Columns**:
+
+  * `student_id`, `test_id`
+  * `total_questions`
+  * `questions_attempted`
+  * `correct_answers`
+  * `accuracy_percent` (float)
+  * `time_spent` (float): Total test duration in seconds.
 
 ### 3.3 `test_funnel_fact`
-- **Granularity**: One record per test.
-- **Purpose**: Used to build funnel metrics on test completion rates.
-- **Columns**:
-  - `test_id`
-  - `total_submissions`
-  - `completed_submissions`
-  - `incomplete_submissions`
-  - `completion_rate`
-  - `avg_submit_time`
+
+* **Grain**: One record per test.
+* **Purpose**: Funnel KPIs for all test-takers.
+* **Columns**:
+
+  * `test_id`
+  * `total_submissions`
+  * `completed_submissions`
+  * `incomplete_submissions`
+  * `completion_rate` (float)
+  * `avg_submit_time` (float)
 
 ---
 
-## 4. Project Structure
+## 4. Relationships Summary
 
-- **Helper Scripts**:
-
-- **utils.py** – Contains reusable utility functions.
-
-- **etl_utils.py** – Contains shared ETL functions.
-
-**Pipeline Directories**:
-
-python_batch_pipelines/ – Includes ETL scripts written in Python using libraries like Pandas and SQLAlchemy. These are best suited for normal or lightweight data loads.
-
-spark_scalable_pipeline/ – Contains ETL scripts built with PySpark for large-scale data processing. These pipelines include support for Spark features such as Adaptive Query Execution and dynamic partitioning.
-
+* `teachers` → `tests` (1\:M)
+* `tests` → `questions` (1\:M)
+* `students` → `sessions` (1\:M)
+* `sessions` → `answers` (1\:M)
+* `answers` → `questions` (M:1)
+* `answers` → `submissions` (M:1)
+* `students` + `tests` = composite key in `submissions`
 
 ---
 
-## 5. Python Function Highlights
+## 5. Project Structure
+
+```
+MCQTestETL/
+├── .env                          # Contains database credentials, alert configs
+├── python_batch_pipelines/      # Hourly Python ETL pipelines
+├── spark_scalable_pipeline/     # Scalable PySpark pipelines
+├── utils.py                     # Utility functions (alerts, engine)
+├── etl_utils.py                 # ETL metadata handling, time window calc
+├── sample_data/                 # CSV files for testing and dashboard
+```
+
+---
+
+## 6. Python Function Highlights
 
 ### utils.py
-- `get_engine(env: str)`: Returns SQLAlchemy engine for a given environment (reads from `.env`).
-- `send_alert(message: str)`: Sends error/critical alert to Slack or email.
 
-### etl_utils.py
-- `get_time_range(engine, pipeline_name, start_override, end_override)`: Computes the time window for each ETL run. Uses overrides if passed or defaults to metadata fallback. Sends alert if last two runs failed.
-- `get_last_successful_runs(engine, pipeline_name, limit=2)`: Queries `etl_metadata` table to find last successful or failed runs.
+* `get_engine(env: str)` – Creates SQLAlchemy engine from `.env`.
+* `send_alert(msg: str)` – Sends Slack/email alert on failure.
 
-- `initialize_spark_session_with_scaling(cluster_name,record_count)`: Initializes and returns a SparkSession instance configured for dynamic resource allocation and adaptive query execution based on the input data load.
-- Enables **Dynamic Allocation** to scale executor resources based on the load.
-- Activates **Adaptive Query Execution (AQE)** for automatic optimization of joins and partition sizes.
-- Configures Spark to:
-    - Coalesce small partitions dynamically.
-    - Handle skewed joins efficiently.
-    - Use reasonable defaults for executor memory and cores
+### etl\_utils.py
+
+* `get_last_successful_runs(engine, pipeline_name, limit)` – Pulls last ETL statuses.
+* `get_time_range(engine, pipeline_name, start_override, end_override)` – Determines ETL window dynamically.
+* `initialize_spark_session_with_scaling()` – Scales Spark job dynamically based on input size.
+
 ---
 
+## 7. How to Run
+
+Run the ETL pipeline manually:
+
+```bash
+python run_etl.py --env dev
+```
+
+To backfill a specific hour:
+
+```bash
+python run_etl.py --env dev --start "2024:06:01 10" --end "2024:06:01 11"
+```
+
+```
