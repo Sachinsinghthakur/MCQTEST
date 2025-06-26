@@ -113,8 +113,13 @@ Transformed, aggregated tables used to support the dashboard and KPIs.
   * `student_id`, `test_id`
   * `total_questions`
   * `questions_attempted`
+  * `questions_revisited`
   * `correct_answers`
+  * `avg_time_per_question`
   * `accuracy_percent` (float)
+  * `total_sessions`
+  * `test_start_time`, `test_submit_time`
+  * `completion_status`
   * `time_spent` (float): Total test duration in seconds.
 
 ### 3.3 `test_funnel_fact`
